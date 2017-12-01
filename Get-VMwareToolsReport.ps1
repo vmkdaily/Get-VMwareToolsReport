@@ -1,4 +1,4 @@
-﻿#requires -version 5.1
+﻿#requires -version 3
 #requires -module VMware.VimAutomation.Core
 Function Get-VMwareToolsReport {
 
@@ -17,12 +17,17 @@ Function Get-VMwareToolsReport {
 
   [CmdletBinding(DefaultParameterSetName='Default')]
   Param(
-
+    
+    #String. Name of virtual machine or Distriubuted Switch.
     [Parameter(ParameterSetName='Default', Position=0)]
     [Parameter(ParameterSetName='DistributedSwitch', Position=0)]
     [ValidateNotNullOrEmpty()]
     [string[]]$Name,
 
+    #One or more Virtual machine Objects.
+    [Parameter(ParameterSetName='ByVM',Mandatory)]
+    [VMware.VimAutomation.ViCore.Types.V1.Inventory.VirtualMachine[]]$VM,
+    
     [Parameter(ParameterSetName='Default')]
     [Parameter(ParameterSetName='DistributedSwitch')]
     [Parameter(ParameterSetName='ById')]
@@ -58,14 +63,20 @@ Function Get-VMwareToolsReport {
 
   Process {
   
-    ## Get virtual machines
-    $VMs = Get-VM @PSBoundParameters | Where-Object {$_.PowerState -eq 'PoweredOn'}
+    #Use the object if we have it
+    If($PSCmdlet.MyInvocation.BoundParameters["VM"]){
+      $VMs = $VM | Where-Object {$_.PowerState -eq 'PoweredOn'}
+    }
+    Else{
+      ## Get virtual machines
+      $VMs = Get-VM @PSBoundParameters | Where-Object {$_.PowerState -eq 'PoweredOn'}
+    }
   
     ## VMware Tools Report
-    $result = $VMs | Select-Object name,@{'n'='ToolsRunningStatus';e={$_.ExtensionData.Guest.ToolsRunningStatus}},`
-    @{'n'='ToolsStatus';e={$_.ExtensionData.Guest.ToolsStatus}},`
-    @{'n'='ToolsVersion';e={$_.ExtensionData.Guest.ToolsVersion}},`
-    @{'n'='Operating System';e={$_.ExtensionData.Guest.GuestFullName}}
+    $result = $VMs | Select-Object name,@{n='ToolsRunningStatus';e={$_.ExtensionData.Guest.ToolsRunningStatus}},
+    @{n='ToolsStatus';e={$_.ExtensionData.Guest.ToolsStatus}},
+    @{n='ToolsVersion';e={$_.ExtensionData.Config.Tools.ToolsVersion}},
+    @{n='Operating System';e={$_.ExtensionData.Guest.GuestFullName}}
     
   } #End Process
 
